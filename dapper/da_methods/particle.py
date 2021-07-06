@@ -55,13 +55,13 @@ class PartFilt:
             HMM.Dyn, HMM.Obs, HMM.t, HMM.X0, self.stats
         N, Nx, Rm12 = self.N, Dyn.M, Obs.noise.C.sym_sqrt_inv
 
-        E = X0.sample(N)
-        w = 1/N*np.ones(N)
+        E = X0.sample(N)                                # initial ensemble  
+        w = 1/N*np.ones(N)                              # initial weights
 
-        stats.assess(0, E=E, w=w)
+        stats.assess(0, E=E, w=w)                       # Snapshot inits 
 
         for k, kObs, t, dt in progbar(chrono.ticker):
-            E = Dyn(E, t-dt, dt)
+            E = Dyn(E, t-dt, dt)                        # Model eval
             if Dyn.noise.C != 0:
                 D  = rnd.randn(N, Nx)
                 E += np.sqrt(dt*self.qroot)*(D@Dyn.noise.C.Right)
@@ -72,10 +72,10 @@ class PartFilt:
                     w /= w.sum()
 
             if kObs is not None:
-                stats.assess(k, kObs, 'f', E=E, w=w)
+                stats.assess(k, kObs, 'f', E=E, w=w)    # Snapshot forcast
 
                 innovs = (yy[kObs] - Obs(E, t)) @ Rm12.T
-                w      = reweight(w, innovs=innovs)
+                w      = reweight(w, innovs=innovs)     # update w using bayes rule
 
                 if trigger_resampling(w, self.NER, [stats, E, k, kObs]):
                     C12     = self.reg*auto_bandw(N, Nx)*raw_C12(E, w)
