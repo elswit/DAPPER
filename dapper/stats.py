@@ -41,11 +41,12 @@ class Stats(StatPrint):
         self.store_u   = store_u
         self.store_s   = hasattr(xp, 'Lag')
 
+
         # Shapes
-        K    = xx.shape[0]-1
-        Nx   = xx.shape[1]
-        KObs = yy.shape[0]-1
-        Ny   = yy.shape[1]
+        K    = xx.shape[0]-1            # number of states in the entire trajectory 
+        Nx   = xx.shape[1]              # dimensions of the state of the model
+        KObs = yy.shape[0]-1            # number of observations
+        Ny   = yy.shape[1]              # dimensions of the observations
         self.K   , self.Nx = K, Nx
         self.KObs, self.Ny = KObs, Ny
 
