@@ -88,6 +88,66 @@ class PartFilt:
                     #     w /= w.sum()
             stats.assess(k, kObs, 'u', E=E, w=w)
 
+@particle_method
+class PFMLQ:
+    """An 'experimental' proposal density particle filter.
+    .. note:: Regularization (`Qs`) is here added BEFORE Bayes rule.
+              If `Qs==0`: the filter should be equal to
+              the bootstrap filter :func:`PartFilt`.
+    """
+
+    N: int
+    Qs: float
+    reg: float   = 0
+    nuj: bool    = True
+    wroot: float = 1.0
+
+    def assimilate(self, HMM, xx, yy):
+        Dyn, Obs, chrono, X0, stats = \
+            HMM.Dyn, HMM.Obs, HMM.t, HMM.X0, self.stats
+        N, Nx, R = self.N, Dyn.M, Obs.noise.C.full
+
+        E = X0.sample(N)
+        w = 1/N*np.ones(N)
+
+        stats.assess(0, E=E, w=w)
+
+        for k, kObs, t, dt in progbar(chrono.ticker):
+            E = Dyn(E, t-dt, dt)
+            if Dyn.noise.C != 0:
+                E += np.sqrt(dt)*(rnd.randn(N, Nx)@Dyn.noise.C.Right)
+
+            if kObs is not None:
+                stats.assess(k, kObs, 'f', E=E, w=w)
+                y = yy[kObs]
+
+                Eo = Obs(E, t)
+                innovs = y - Eo
+
+                # EnKF-ish update
+                s   = self.Qs*auto_bandw(N, Nx)
+                As  = s*raw_C12(E, w)
+                Ys  = s*raw_C12(Eo, w)
+                C   = Ys.T@Ys + R
+                KG  = As.T@mrdiv(Ys, C)
+                E  += sample_quickly_with(As)[0]
+                D   = Obs.noise.sample(N)
+                dE  = KG @ (y-Obs(E, t)-D).T
+                E   = E + dE.T
+
+                # Importance weighting
+                chi2   = innovs*mldiv(C, innovs.T).T
+                logL   = -0.5 * np.sum(chi2, axis=1)
+                w      = reweight(w, logL=logL)
+
+                # Resampling
+                if trigger_resampling(w, self.NER, [stats, E, k, kObs]):
+                    C12     = self.reg*auto_bandw(N, Nx)*raw_C12(E, w)
+                    idx, w  = resample(w, self.resampl, wroot=self.wroot)
+                    E, _    = regularize(C12, E, idx, self.nuj)
+
+            stats.assess(k, kObs, 'u', E=E, w=w)
+
 
 @particle_method
 class OptPF:
