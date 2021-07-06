@@ -94,6 +94,21 @@ class PFMLQ:
     .. note:: Regularization (`Qs`) is here added BEFORE Bayes rule.
               If `Qs==0`: the filter should be equal to
               the bootstrap filter :func:`PartFilt`.
+              
+    .. Naming::
+                * E: ensemble matrix
+                * w: ensemble weights or coefficients
+                * X: centered ensemble
+                * N: ensemble size
+                * Nx: state size
+                * Ny: obs size
+                * Double letters means a sequence of something. For example:
+                * xx: Time series of truth; shape (K+1, Nx)
+                * yy: Time series of obs; shape (KObs+1, Nx)
+                * EE: Time series of ensemble matrices
+                * ii, jj: Sequences of indices (integers)
+                * xps: an xpList or xpDict, where xp abbreviates "experiment".
+
     """
 
     N: int
